@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
@@ -9,34 +9,41 @@ public class BezierCurveLineRenderer : MonoBehaviour
 
     public Transform[] points;
 
-    public LineRenderer lineRenderer;
+    private LineRenderer lineRenderer;
     public int vertexCount = 12;
 
-	// Use this for initialization
-	void Start () {
-		
+    [Range(0f, 1f)]
+    public float visiblePercentage = 1.0f;
+
+	void Awake () {
+        lineRenderer = GetComponent<LineRenderer>();
 	}
+
+    IEnumerator AnimatePoints()
+    {
+        while (true)
+        {
+            if (points == null || points.Length <= 0)
+            {
+                lineRenderer.positionCount = 0;
+                lineRenderer.SetPositions(new Vector3[] { Vector3.zero });
+            }
+            else
+            {
+                var pointList = new List<Vector3>();
+                for (float ratio = 0; ratio <= 1; ratio += 1.0f / vertexCount)
+                {
+                    Vector3 bezierPoint = CalculateBezierPoint(ratio, points.Select(point => point.position));
+                    pointList.Add(bezierPoint);
+                }
+                lineRenderer.positionCount = (int)(pointList.Count * Mathf.Min(visiblePercentage, 0.9f));
+                lineRenderer.SetPositions(pointList.ToArray());
+            }
+
+            yield return new WaitForEndOfFrame();
+        }
+    }
 	
-	// Update is called once per frame
-	void Update ()
-	{
-        if (points == null || points.Length <= 0)
-        {
-            lineRenderer.positionCount = 0;
-            lineRenderer.SetPositions(new Vector3[] { Vector3.zero});
-            return;
-        }
-
-	    var pointList = new List<Vector3>();
-	    for (float ratio = 0; ratio <= 1; ratio += 1.0f / vertexCount)
-        {
-            Vector3 bezierPoint = CalculateBezierPoint(ratio, points.Select(point => point.position));
-            pointList.Add(bezierPoint);
-        }
-        lineRenderer.positionCount = pointList.Count;
-	    lineRenderer.SetPositions(pointList.ToArray());
-	}
-
     private Vector3 CalculateBezierPoint(float ratio, IEnumerable<Vector3> points)
     {
         if (points.Count() == 1)
@@ -78,5 +85,10 @@ public class BezierCurveLineRenderer : MonoBehaviour
         //    Gizmos.DrawLine(Vector3.Lerp(point1.position, point2.position, ratio),
         //        Vector3.Lerp(point2.position, point3.position, ratio));
         //}
+    }
+
+    void Start()
+    {
+        StartCoroutine(AnimatePoints());
     }
 }
